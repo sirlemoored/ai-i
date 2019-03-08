@@ -1,0 +1,11 @@
+D:\Informatyka\Semestr 6\si_1\si_1\bin\Debug\netcoreapp2.1\si_1.deps.json
+D:\Informatyka\Semestr 6\si_1\si_1\bin\Debug\netcoreapp2.1\si_1.runtimeconfig.json
+D:\Informatyka\Semestr 6\si_1\si_1\bin\Debug\netcoreapp2.1\si_1.runtimeconfig.dev.json
+D:\Informatyka\Semestr 6\si_1\si_1\bin\Debug\netcoreapp2.1\si_1.dll
+D:\Informatyka\Semestr 6\si_1\si_1\bin\Debug\netcoreapp2.1\si_1.pdb
+D:\Informatyka\Semestr 6\si_1\si_1\obj\Debug\netcoreapp2.1\si_1.csprojAssemblyReference.cache
+D:\Informatyka\Semestr 6\si_1\si_1\obj\Debug\netcoreapp2.1\si_1.csproj.CoreCompileInputs.cache
+D:\Informatyka\Semestr 6\si_1\si_1\obj\Debug\netcoreapp2.1\si_1.AssemblyInfoInputs.cache
+D:\Informatyka\Semestr 6\si_1\si_1\obj\Debug\netcoreapp2.1\si_1.AssemblyInfo.cs
+D:\Informatyka\Semestr 6\si_1\si_1\obj\Debug\netcoreapp2.1\si_1.dll
+D:\Informatyka\Semestr 6\si_1\si_1\obj\Debug\netcoreapp2.1\si_1.pdb
