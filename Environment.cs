@@ -10,7 +10,7 @@ namespace si_1
     {
 
         private int _populationSize;
-
+        private string _fileName;
         private float _minSpeed;
         private float _maxSpeed;
         private int _capacity;
@@ -20,8 +20,9 @@ namespace si_1
         private List<Node> _nodes;
         private List<Individual> _individuals;
 
-        public Environment(int populationSize)
+        public Environment(int populationSize, string fileName)
         {
+            _fileName = fileName;
             _populationSize = populationSize;
             _nodes = new List<Node>();
             _individuals = new List<Individual>(_populationSize);
@@ -29,7 +30,7 @@ namespace si_1
 
         public void LoadData()
         {
-            StreamReader str = new StreamReader("D:\\Informatyka\\Semestr 6\\si_1\\si_1\\data\\hard_3.ttp");
+            StreamReader str = new StreamReader("D:\\Informatyka\\Semestr 6\\si_1\\si_1\\data\\" + _fileName);
             List<string> parameters = new List<string>();
             
             for (int i = 0; i < 9; i++)
@@ -100,7 +101,7 @@ namespace si_1
             {
                 for (int j = 0; j < matrixSize; j++)
                 {   
-                    float distance = (float)Math.Sqrt(Math.Pow(_nodes[i]._posX - _nodes[j]._posX, 2) + (float)(Math.Pow(_nodes[i]._posY - _nodes[j]._posY, 2)));
+                    float distance = (float)Math.Ceiling((float)Math.Sqrt(Math.Pow(_nodes[i]._posX - _nodes[j]._posX, 2) + (float)(Math.Pow(_nodes[i]._posY - _nodes[j]._posY, 2))));
                     _distanceMatrix[i,j] = distance;
                 }
             }
@@ -113,9 +114,9 @@ namespace si_1
             {
                 for (int j = 0; j < _nodes.Count ; j++)
                 {
-                    Console.Write(_distanceMatrix[i,j] + "    ");
+                    Console.Write(String.Format("{0, 10}", _distanceMatrix[i, j]));
                 }
-                Console.WriteLine();
+                Console.WriteLine('\n');
             }
         }
         //
@@ -168,5 +169,6 @@ namespace si_1
             return time;
         }
 
+        public int getNumberOfNodes() => _dimension;
     }
 }

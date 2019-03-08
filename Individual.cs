@@ -15,5 +15,17 @@ namespace si_1
             _routeLength = routeLength;
             _order = Enumerable.Range(0, _routeLength).OrderBy(x => Guid.NewGuid()).ToList();
         }
+
+        // DEBUG
+        public string PrintRoute()
+        {
+            StringBuilder sb = new StringBuilder();
+            for(int i = 0; i < _routeLength; i++)
+            {
+                sb.Append(_order[i] + "-");
+            }
+            sb.Append(_order[0]);
+            return sb.ToString();
+        }
     }
 }
