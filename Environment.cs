@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -17,6 +18,7 @@ namespace si_1
         private float[,] _distanceMatrix;
         private int _dimension;
         private int _numberItems;
+        private float _probabilityMutation;
         private List<Node> _nodes;
         private List<Individual> _individuals;
 
@@ -145,9 +147,89 @@ namespace si_1
             velocity = _maxSpeed - (float)totalWeight * (_maxSpeed - _minSpeed) / (float)_capacity;
             time += distance / velocity;
 
+
             ind._costF = time;
             ind._costG = value;
 
+        }
+
+        public Individual CrossoverER(Individual ind1, Individual ind2)
+        {
+            if (ind1._routeLength != ind2._routeLength || ind2._routeLength != _dimension || ind1._routeLength != _dimension)
+                return null;
+
+            List<SortedSet<int>> neighbors = new List<SortedSet<int>>();
+            for (int i = 0; i < _dimension; i++)
+            {
+                neighbors.Add(new SortedSet<int>());
+                int indx = ind1._order.IndexOf(i);
+                neighbors[i].Add(ind1._order[(indx + 1) % _dimension]);
+                if (indx - 1 < 0)
+                    neighbors[i].Add(ind1._order[_dimension - 1]);
+                else
+                    neighbors[i].Add(ind1._order[indx - 1]);
+
+                indx = ind2._order.IndexOf(i);
+                neighbors[i].Add(ind2._order[(indx + 1) % _dimension]);
+                if (indx - 1 < 0)
+                    neighbors[i].Add(ind2._order[_dimension - 1]);
+                else
+                    neighbors[i].Add(ind2._order[indx - 1]);
+            }
+
+            List<int> childOrder = new List<int>();
+            int currentNode = ind1._order[0];
+            childOrder.Add(currentNode);
+            while (childOrder.Count < _dimension)
+            {
+                for (int i = 0; i < _dimension; i++)
+                    neighbors[i].Remove(currentNode);
+                int leastConnections = _dimension;
+                int leastConnected = 0;
+                if (neighbors[currentNode].Count == 0)
+                {
+                    for (int i = 0; i < _dimension; i++)
+                        if (neighbors[i].Count != 0)
+                        {
+                            leastConnected = i;
+                            break;
+                        }
+                }
+                else
+                {
+
+                    foreach (var node in neighbors[currentNode])
+                    {
+                        if (neighbors[node].Count < leastConnections)
+                        {
+                            leastConnected = node;
+                            leastConnections = neighbors[node].Count;
+                        }
+                    }
+                }
+                currentNode = leastConnected;
+                childOrder.Add(currentNode);
+            }
+            return new Individual(childOrder);
+        }
+
+        public Individual MutateSwap(Individual ind)
+        {
+            Random rnd = new Random();
+            while (rnd.NextDouble() < _probabilityMutation)
+            {
+                int indx1 = rnd.Next(0, ind._routeLength);
+                int indx2 = rnd.Next(0, ind._routeLength);
+                if (indx1 == indx2)
+                {
+                    indx2++;
+                    indx2 %= ind._routeLength;
+                }
+                int buffer = ind._order[indx2];
+                ind._order[indx2] = ind._order[indx1];
+                ind._order[indx1] = buffer;
+            }
+            return new Individual(ind._order);
         }
 
         public int getNumberOfNodes() => _dimension;

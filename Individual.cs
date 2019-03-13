@@ -18,6 +18,12 @@ namespace si_1
             _order = Enumerable.Range(0, _routeLength).OrderBy(x => Guid.NewGuid()).ToList();
         }
 
+        public Individual(List<int> order)
+        {
+            _routeLength = order.Count;
+            _order = order;
+        }
+
         public float GetTotalCost() => _costG - _costF;
 
         // DEBUG

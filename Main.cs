@@ -9,11 +9,10 @@ namespace si_1
         {
 
 
-            Environment e = new Environment(100, "trivial_1.ttp");
+            Environment e = new Environment(10, "trivial_1.ttp");
             e.LoadData();
             e.CreateDistanceMatrix();
             e.InitializePopulation();
-            e.PrintPopulation();
             Console.Read();
         }
     }
