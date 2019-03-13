@@ -20,7 +20,22 @@ namespace si_1
 
         public void AssignItem(Item item)
         {
-            _items.Add(item);
+            if (_items.Count == 0)
+            {
+                _items.Add(item);
+            }
+            else
+            {
+                bool wasInserted = false;
+                for (int i = 0; i < _items.Count && !wasInserted; i++)
+                {
+                    if (item.GetProfit() > _items[i].GetProfit())
+                    {
+                        _items.Insert(i, item);
+                        wasInserted = true;
+                    }
+                }
+            }
         }
     }
 }

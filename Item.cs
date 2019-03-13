@@ -17,5 +17,7 @@ namespace si_1
             _nodeId = nodeId;
         }
 
+        public float GetProfit() => (float)_profit / (float)_weight;
+
     }
 }

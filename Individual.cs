@@ -9,12 +9,16 @@ namespace si_1
     {
         public int _routeLength { get; }
         public List<int> _order { get; }
+        public float _costF { get; set; }
+        public float _costG { get; set; }
 
         public Individual(int routeLength)
         {
             _routeLength = routeLength;
             _order = Enumerable.Range(0, _routeLength).OrderBy(x => Guid.NewGuid()).ToList();
         }
+
+        public float GetTotalCost() => _costG - _costF;
 
         // DEBUG
         public string PrintRoute()
@@ -26,6 +30,12 @@ namespace si_1
             }
             sb.Append(_order[0]);
             return sb.ToString();
+        }
+
+        // DEBUG
+        public string PrintCosts()
+        {
+            return "Czas: " + _costF + ", łup:" + _costG;
         }
     }
 }
