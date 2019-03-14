@@ -9,7 +9,6 @@ namespace si_1
 {
     class Environment
     {
-
         private int _populationSize;
         private string _fileName;
         private float _minSpeed;
@@ -18,18 +17,25 @@ namespace si_1
         private float[,] _distanceMatrix;
         private int _dimension;
         private int _numberItems;
-        private float _probabilityMutation;
-        private const float _fitnessExpModifier = 0.3f;
+        private int _tournamentSize = 5;
+        private float _probabilityMutation = 0.05f;
+        private float _probabilityCrossover = 0.7f;
+        private float _percentageMutation = 0.1f;
+        private float _fitnessExpModifier = 1.0f;
         private List<Node> _nodes;
-        private List<Individual> _individuals;
+        public List<Individual> _individuals;
         private List<Individual> _toCrossover;
 
-        public Environment(int populationSize, string fileName)
+        public Environment(int populationSize, string fileName, float probabilityMutation, float probabilityCrossover, float percentageMutation, float fitnessExpModifier)
         {
             _fileName = fileName;
             _populationSize = populationSize;
             _nodes = new List<Node>();
             _individuals = new List<Individual>(_populationSize);
+            _probabilityCrossover = probabilityCrossover;
+            _probabilityMutation = probabilityMutation;
+            _percentageMutation = percentageMutation;
+            _fitnessExpModifier = fitnessExpModifier;
         }
 
         public void LoadData()
@@ -96,12 +102,12 @@ namespace si_1
         {
             int matrixSize = _nodes.Count;
 
-            if (matrixSize <= 0)                                                                                // check whether matrix size is smaller than 1
+            if (matrixSize <= 0)
                 return;
 
             _distanceMatrix = new float[matrixSize, matrixSize];
 
-            for (int i = 0; i < matrixSize; i++)                                                                // calculate euclidean distance between two points
+            for (int i = 0; i < matrixSize; i++)
             {
                 for (int j = 0; j < matrixSize; j++)
                 {
@@ -115,7 +121,10 @@ namespace si_1
         {
             for (int i = 0; i < _populationSize; i++)
                 _individuals.Add(new Individual(_dimension));
+        }
 
+        public void AssessPopulationFitness()
+        {
             for (int i = 0; i < _populationSize; i++)
                 CalculateCosts(_individuals[i]);
         }
@@ -148,8 +157,7 @@ namespace si_1
             distance = _distanceMatrix[_nodes[ind._order[ind._routeLength - 1]]._id, _nodes[ind._order[0]]._id];
             velocity = _maxSpeed - (float)totalWeight * (_maxSpeed - _minSpeed) / (float)_capacity;
             time += distance / velocity;
-
-
+            
             ind._costF = time;
             ind._costG = value;
 
@@ -203,7 +211,7 @@ namespace si_1
                 if (fitness < 0)
                     fitnesses[i] = (float)Math.Exp(_fitnessExpModifier * fitness / fitnessAvgNeg * -1);
                 else
-                    fitnesses[i] = (float)Math.Exp(_fitnessExpModifier * fitness / fitnessAvgPos * (fitnessMax / fitnessMin));
+                    fitnesses[i] = (float)Math.Exp(_fitnessExpModifier * fitness / fitnessAvgPos * (fitnessMax / Math.Abs(fitnessMin)));
                 normalizedSum += fitnesses[i];
             }
             fitnesses[0] /= normalizedSum;
@@ -230,8 +238,58 @@ namespace si_1
                 }
                 _toCrossover.Add(_individuals[indx]);
             }
+
             _toCrossover = _toCrossover.OrderBy(x => Guid.NewGuid()).ToList();
 
+            for (int i = 0; i < (int)(_populationSize * 0.05); i++)
+            {
+                _toCrossover[i] = _individuals[i];
+            }
+        }
+
+        public void SelectTournament()
+        {
+            _toCrossover = new List<Individual>(_populationSize);
+            for (int i = 0; i < _populationSize; i++)
+            {
+                List<int> tempOrder = Enumerable.Range(0, _individuals.Count).OrderBy(x => Guid.NewGuid()).ToList();
+                tempOrder = tempOrder.GetRange(0, _tournamentSize);
+                var z = tempOrder.First(el => _individuals[el].GetTotalCost() == tempOrder.Max(x => _individuals[x].GetTotalCost()));
+                _toCrossover.Add(_individuals[z]);
+            }
+
+            _toCrossover = _toCrossover.OrderBy(x => Guid.NewGuid()).ToList();
+
+        }
+
+        public void CrossoverPopulation()
+        {
+            Random rnd = new Random();
+
+            for (int i = 0; i < _toCrossover.Count / 2; i++)
+            {
+                float prob = (float)rnd.NextDouble();
+                if (prob <= _probabilityCrossover)
+                {
+                    _individuals[2 * i] = CrossoverER(_toCrossover[2 * i], _toCrossover[2 * i + 1]);
+                    _individuals[2 * i + 1] = CrossoverER(_toCrossover[2 * i + 1], _toCrossover[2 * i]);
+                }
+                else
+                {
+                    _individuals[2 * i] = _toCrossover[2 * i];
+                    _individuals[2 * i + 1] = _toCrossover[2 * i + 1];
+                }
+            }
+        }
+
+        public void MutatePopulation()
+        {
+            Random rnd = new Random();
+            for (int i = 0; i < _individuals.Count; i++)
+                if ((float)rnd.NextDouble() < _probabilityMutation)
+                {
+                    _individuals[i] = MutateSwap(_individuals[i]);
+                }
         }
 
         public Individual CrossoverER(Individual ind1, Individual ind2)
@@ -298,16 +356,18 @@ namespace si_1
         {
             Random rnd = new Random();
 
-            int indx1 = rnd.Next(0, ind._routeLength);
-            int indx2 = rnd.Next(0, ind._routeLength);
-            if (indx1 == indx2)
+            int numMutations = (int)(_dimension * _percentageMutation) / 2;
+
+            for (int i = 0; i < numMutations; i++)
             {
-                indx2++;
-                indx2 %= ind._routeLength;
+                int indx1 = rnd.Next(0, ind._routeLength);
+                int indx2 = rnd.Next(0, ind._routeLength);
+                
+                int buffer = ind._order[indx2];
+                ind._order[indx2] = ind._order[indx1];
+                ind._order[indx1] = buffer;
             }
-            int buffer = ind._order[indx2];
-            ind._order[indx2] = ind._order[indx1];
-            ind._order[indx1] = buffer;
+
             return new Individual(ind._order);
         }
 
@@ -346,6 +406,29 @@ namespace si_1
             for (int i = 0; i < _populationSize; i++)
                 Console.WriteLine("OSOBNIK " + i + " | ZYSK " + _individuals[i].GetTotalCost() + " | DROGA " + _individuals[i].PrintRoute());
         }
-        
+
+        public void ExportIndividual(Individual ind)
+        {
+            StreamWriter sr = new StreamWriter("D:\\Informatyka\\Semestr 6\\si_1\\si_1\\results\\res-" +_fileName.Remove(_fileName.Length - 4) + "-" + (int)ind.GetTotalCost() + ".csv");
+            foreach (var nodeIdx in ind._order)
+            {
+                sr.WriteLine(_nodes[nodeIdx]._posX + ";" +
+                    "" + _nodes[nodeIdx]._posY);
+            }
+            sr.Close();
+        }
+
+        public Individual getBest()
+        {
+            Individual best = _individuals[0];
+            AssessPopulationFitness();
+            foreach (var item in _individuals)
+            {
+                if (item.GetTotalCost() > best.GetTotalCost())
+                    best = item;
+            }
+
+            return best;
+        }
     }
 }
