@@ -19,8 +19,10 @@ namespace si_1
         private int _dimension;
         private int _numberItems;
         private float _probabilityMutation;
+        private const float _fitnessExpModifier = 0.3f;
         private List<Node> _nodes;
         private List<Individual> _individuals;
+        private List<Individual> _toCrossover;
 
         public Environment(int populationSize, string fileName)
         {
@@ -34,7 +36,7 @@ namespace si_1
         {
             StreamReader str = new StreamReader("D:\\Informatyka\\Semestr 6\\si_1\\si_1\\data\\" + _fileName);
             List<string> parameters = new List<string>();
-            
+
             for (int i = 0; i < 9; i++)
             {
                 string line = str.ReadLine();
@@ -47,7 +49,7 @@ namespace si_1
             _capacity = int.Parse(parameters[4], CultureInfo.InvariantCulture);
             _minSpeed = float.Parse(parameters[5], CultureInfo.InvariantCulture);
             _maxSpeed = float.Parse(parameters[6], CultureInfo.InvariantCulture);
-            
+
             str.ReadLine();
 
             for (int i = 0; i < _dimension; i++)
@@ -102,9 +104,9 @@ namespace si_1
             for (int i = 0; i < matrixSize; i++)                                                                // calculate euclidean distance between two points
             {
                 for (int j = 0; j < matrixSize; j++)
-                {   
+                {
                     float distance = (float)Math.Ceiling((float)Math.Sqrt(Math.Pow(_nodes[i]._posX - _nodes[j]._posX, 2) + (float)(Math.Pow(_nodes[i]._posY - _nodes[j]._posY, 2))));
-                    _distanceMatrix[i,j] = distance;
+                    _distanceMatrix[i, j] = distance;
                 }
             }
         }
@@ -136,7 +138,7 @@ namespace si_1
                         totalWeight += weight;
                         value += _nodes[ind._order[i]]._items.First()._profit;
                     }
-                }                                                                                              
+                }
 
                 distance = _distanceMatrix[_nodes[ind._order[i]]._id, _nodes[ind._order[i + 1]]._id];
                 velocity = _maxSpeed - (float)totalWeight * (_maxSpeed - _minSpeed) / (float)_capacity;
@@ -150,6 +152,85 @@ namespace si_1
 
             ind._costF = time;
             ind._costG = value;
+
+        }
+
+        public void SelectRoulette()
+        {
+            _individuals.Sort(new IndividualComparer().Compare);
+            float[] fitnesses = new float[_individuals.Count];
+
+            // NORMALIZING NEGATIVE AND POSITIVE FITNESSES
+
+            float fitnessSumPos = 0; float fitnessAvgPos = 1; int fitnessCountPos = 0; float fitnessMax = 0;
+            float fitnessSumNeg = 0; float fitnessAvgNeg = 1; int fitnessCountNeg = 0; float fitnessMin = 0;
+            float normalizedSum = 0;
+
+            for (int i = 0; i < _individuals.Count; i++)
+            {
+                float fitness = _individuals[i].GetTotalCost();
+                if (fitness < 0)
+                {
+                    fitnessSumNeg += fitness;
+                    fitnessCountNeg++;
+                    if (fitness < fitnessMin)
+                        fitnessMin = fitness;
+                }
+                else
+                {
+                    fitnessSumPos += fitness;
+                    fitnessCountPos++;
+                    if (fitness > fitnessMax)
+                        fitnessMax = fitness;
+                }
+
+            }
+
+            if (fitnessCountNeg > 0)
+                fitnessAvgNeg = fitnessSumNeg / (float)fitnessCountNeg;
+            if (fitnessCountPos > 0)
+                fitnessAvgPos = fitnessSumPos / (float)fitnessCountPos;
+
+            if (fitnessMax == 0 || fitnessMin == 0)
+            {
+                fitnessMax = 1;
+                fitnessMin = 1;
+            }
+
+            for (int i = 0; i < _individuals.Count; i++)
+            {
+                float fitness = _individuals[i].GetTotalCost();
+                if (fitness < 0)
+                    fitnesses[i] = (float)Math.Exp(_fitnessExpModifier * fitness / fitnessAvgNeg * -1);
+                else
+                    fitnesses[i] = (float)Math.Exp(_fitnessExpModifier * fitness / fitnessAvgPos * (fitnessMax / fitnessMin));
+                normalizedSum += fitnesses[i];
+            }
+            fitnesses[0] /= normalizedSum;
+            for (int i = 1; i < _individuals.Count; i++)
+                fitnesses[i] = (fitnesses[i] / normalizedSum) + fitnesses[i - 1];
+            fitnesses[_individuals.Count - 1] = 1;
+
+            Random rnd = new Random();
+            _toCrossover = new List<Individual>(_populationSize);
+            for (int j = 0; j < _populationSize; j++)
+            {
+                float prob = (float)rnd.NextDouble();
+                int indx = 0;
+                if (prob < fitnesses[0])
+                    indx = 0;
+                else
+                {
+                    for (int i = 0; i < _individuals.Count - 1; i++)
+                        if (prob > fitnesses[i] && prob <= fitnesses[i + 1])
+                        {
+                            indx = i + 1;
+                            break;
+                        }
+                }
+                _toCrossover.Add(_individuals[indx]);
+            }
+            _toCrossover = _toCrossover.OrderBy(x => Guid.NewGuid()).ToList();
 
         }
 
@@ -216,24 +297,22 @@ namespace si_1
         public Individual MutateSwap(Individual ind)
         {
             Random rnd = new Random();
-            while (rnd.NextDouble() < _probabilityMutation)
+
+            int indx1 = rnd.Next(0, ind._routeLength);
+            int indx2 = rnd.Next(0, ind._routeLength);
+            if (indx1 == indx2)
             {
-                int indx1 = rnd.Next(0, ind._routeLength);
-                int indx2 = rnd.Next(0, ind._routeLength);
-                if (indx1 == indx2)
-                {
-                    indx2++;
-                    indx2 %= ind._routeLength;
-                }
-                int buffer = ind._order[indx2];
-                ind._order[indx2] = ind._order[indx1];
-                ind._order[indx1] = buffer;
+                indx2++;
+                indx2 %= ind._routeLength;
             }
+            int buffer = ind._order[indx2];
+            ind._order[indx2] = ind._order[indx1];
+            ind._order[indx1] = buffer;
             return new Individual(ind._order);
         }
 
         public int getNumberOfNodes() => _dimension;
-        
+
         // DEBUG
         public void PrintDistanceMatrix()
         {
@@ -267,5 +346,6 @@ namespace si_1
             for (int i = 0; i < _populationSize; i++)
                 Console.WriteLine("OSOBNIK " + i + " | ZYSK " + _individuals[i].GetTotalCost() + " | DROGA " + _individuals[i].PrintRoute());
         }
+        
     }
 }

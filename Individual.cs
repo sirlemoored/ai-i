@@ -21,7 +21,7 @@ namespace si_1
         public Individual(List<int> order)
         {
             _routeLength = order.Count;
-            _order = order;
+            _order = new List<int>(order);
         }
 
         public float GetTotalCost() => _costG - _costF;

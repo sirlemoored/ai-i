@@ -7,12 +7,11 @@ namespace si_1
     {
         static void Main(string[] args)
         {
-
-
             Environment e = new Environment(10, "trivial_1.ttp");
             e.LoadData();
             e.CreateDistanceMatrix();
             e.InitializePopulation();
+            e.SelectRoulette();
             Console.Read();
         }
     }
