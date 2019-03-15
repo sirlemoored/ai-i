@@ -9,6 +9,10 @@ namespace si_1
 {
     class Environment
     {
+        public const int SELECTION_ROULETTE = 0;
+        public const int SELECTION_TOURNAMENT = 1;
+        public const int SELECTION_RANK_BASED = 2;
+
         private int _populationSize;
         private string _fileName;
         private float _minSpeed;
@@ -22,11 +26,14 @@ namespace si_1
         private float _probabilityCrossover = 0.7f;
         private float _percentageMutation = 0.1f;
         private float _fitnessExpModifier = 1.0f;
+        private float _eliteSize;
+        private int _selectionType;
         private List<Node> _nodes;
         public List<Individual> _individuals;
         private List<Individual> _toCrossover;
+        private List<Individual> _bestIndividuals;
 
-        public Environment(int populationSize, string fileName, float probabilityMutation, float probabilityCrossover, float percentageMutation, float fitnessExpModifier)
+        public Environment(int populationSize, string fileName, float probabilityMutation, float probabilityCrossover, float percentageMutation, float fitnessExpModifier, int tournamentSize, float eliteSize, int selectionType)
         {
             _fileName = fileName;
             _populationSize = populationSize;
@@ -36,6 +43,9 @@ namespace si_1
             _probabilityMutation = probabilityMutation;
             _percentageMutation = percentageMutation;
             _fitnessExpModifier = fitnessExpModifier;
+            _tournamentSize = tournamentSize;
+            _eliteSize = eliteSize;
+            _selectionType = selectionType;
         }
 
         public void LoadData()
@@ -163,7 +173,7 @@ namespace si_1
 
         }
 
-        public void SelectRoulette()
+        private void SelectionRoulette()
         {
             _individuals.Sort(new IndividualComparer().Compare);
             float[] fitnesses = new float[_individuals.Count];
@@ -223,31 +233,15 @@ namespace si_1
             _toCrossover = new List<Individual>(_populationSize);
             for (int j = 0; j < _populationSize; j++)
             {
-                float prob = (float)rnd.NextDouble();
-                int indx = 0;
-                if (prob < fitnesses[0])
-                    indx = 0;
-                else
-                {
-                    for (int i = 0; i < _individuals.Count - 1; i++)
-                        if (prob > fitnesses[i] && prob <= fitnesses[i + 1])
-                        {
-                            indx = i + 1;
-                            break;
-                        }
-                }
-                _toCrossover.Add(_individuals[indx]);
+
+                _toCrossover.Add(_individuals[SpinRoulette(fitnesses, rnd)]);
             }
 
             _toCrossover = _toCrossover.OrderBy(x => Guid.NewGuid()).ToList();
-
-            for (int i = 0; i < (int)(_populationSize * 0.05); i++)
-            {
-                _toCrossover[i] = _individuals[i];
-            }
+            
         }
 
-        public void SelectTournament()
+        private void SelectionTournament()
         {
             _toCrossover = new List<Individual>(_populationSize);
             for (int i = 0; i < _populationSize; i++)
@@ -255,11 +249,51 @@ namespace si_1
                 List<int> tempOrder = Enumerable.Range(0, _individuals.Count).OrderBy(x => Guid.NewGuid()).ToList();
                 tempOrder = tempOrder.GetRange(0, _tournamentSize);
                 var z = tempOrder.First(el => _individuals[el].GetTotalCost() == tempOrder.Max(x => _individuals[x].GetTotalCost()));
-                _toCrossover.Add(_individuals[z]);
+                _toCrossover.Add(new Individual(_individuals[z]._order));
             }
 
             _toCrossover = _toCrossover.OrderBy(x => Guid.NewGuid()).ToList();
 
+        }
+
+        private void SelectionRankBased()
+        {
+            _individuals.Sort(new IndividualComparer().Compare);
+            float[] fitnesses = new float[_populationSize];
+            int fitnessSum = (1 + _populationSize) * _populationSize / 2;
+            fitnesses[0] = (float)_populationSize / (float)fitnessSum;
+            for (int i = 1; i < _populationSize; i++)
+                fitnesses[i] = fitnesses[i - 1] + ((_populationSize - i) / (float)fitnessSum);
+
+            fitnesses[_populationSize - 1] = 1;
+
+            Random rnd = new Random();
+            _toCrossover = new List<Individual>(_populationSize);
+            for (int j = 0; j < _populationSize; j++)
+            {
+                
+                _toCrossover.Add(new Individual(_individuals[SpinRoulette(fitnesses, rnd)]._order));
+            }
+
+            _toCrossover = _toCrossover.OrderBy(x => Guid.NewGuid()).ToList();
+        }
+
+        public void Selection()
+        {
+            switch (_selectionType)
+            {
+                case SELECTION_ROULETTE:
+                    SelectionRoulette();
+                    break;
+                case SELECTION_RANK_BASED:
+                    SelectionRankBased();
+                    break;
+                case SELECTION_TOURNAMENT:
+                    SelectionTournament();
+                    break;
+                default:
+                    break;
+            }
         }
 
         public void CrossoverPopulation()
@@ -371,6 +405,25 @@ namespace si_1
             return new Individual(ind._order);
         }
 
+        public void PreserveElite()
+        {
+            _individuals.Sort(new IndividualComparer().Compare);
+            int numPreserved = (int)(_populationSize * _eliteSize);
+            _bestIndividuals = new List<Individual>(numPreserved);
+            for (int i = 0; i < numPreserved; i++)
+            {
+                _bestIndividuals.Add(new Individual(_individuals[i]._order));
+            }
+        }
+
+        public void RestoreElite()
+        {
+            for (int i = 0; i < _bestIndividuals.Count; i++)
+            {
+                _individuals[i] = _bestIndividuals[i];
+            }
+        }
+
         public int getNumberOfNodes() => _dimension;
 
         // DEBUG
@@ -415,6 +468,18 @@ namespace si_1
                 sr.WriteLine(_nodes[nodeIdx]._posX + ";" +
                     "" + _nodes[nodeIdx]._posY);
             }
+
+            sr.WriteLine();
+            sr.WriteLine("pop. size;" + _populationSize);
+            sr.WriteLine("prob. mut.;" + _probabilityMutation);
+            sr.WriteLine("prob. cross.;" + _probabilityCrossover);
+            sr.WriteLine("selection method;" + _selectionType);
+            if (_selectionType == SELECTION_TOURNAMENT)
+                sr.WriteLine("tournament size;" + _tournamentSize);
+            else if (_selectionType == SELECTION_ROULETTE)
+                sr.WriteLine("roulette exp. normalizer;" + _fitnessExpModifier);
+            sr.WriteLine("percentage of mutation;" + _percentageMutation);
+            sr.WriteLine("elite preserved;" + (int)(_eliteSize * _populationSize));
             sr.Close();
         }
 
@@ -429,6 +494,24 @@ namespace si_1
             }
 
             return best;
+        }
+
+        private int SpinRoulette(float[] fitnesses, Random rnd)
+        {
+            float prob = (float)rnd.NextDouble();
+            int indx = 0;
+            if (prob < fitnesses[0])
+                indx = 0;
+            else
+            {
+                for (int i = 0; i < _individuals.Count - 1; i++)
+                    if (prob > fitnesses[i] && prob <= fitnesses[i + 1])
+                    {
+                        indx = i + 1;
+                        break;
+                    }
+            }
+            return indx;
         }
     }
 }

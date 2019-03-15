@@ -8,3 +8,10 @@
 345;750
 650;1130
 580;1175
+
+pop. size;100
+prob. mut.;0,1
+prob. cross.;0,85
+selection method;2
+percentage of mutation;0,2
+elite preserved;10

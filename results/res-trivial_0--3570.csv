@@ -1,0 +1,17 @@
+525;1000
+650;1130
+580;1175
+565;575
+25;230
+25;185
+345;750
+845;655
+945;685
+880;660
+
+pop. size;100
+prob. mut.;0,1
+prob. cross.;0,7
+selection method;2
+percentage of mutation;0,05
+elite preserved;10
